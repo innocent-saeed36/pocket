@@ -210,7 +210,6 @@ func TestHotstuff4NodesByzantineLeaderProposalRejected(t *testing.T) {
 
 	testHeight := uint64(3)
 	testStep := uint8(consensus.NewRound)
-	testRound := uint64(0)
 
 	leaderId := typesCons.NodeId(3)
 	leader := pocketNodes[leaderId]
@@ -241,7 +240,7 @@ func TestHotstuff4NodesByzantineLeaderProposalRejected(t *testing.T) {
 		consensusModImpl := GetConsensusModImpl(pocketNode)
 		consensusModImpl.MethodByName("SetHeight").Call([]reflect.Value{reflect.ValueOf(testHeight)})
 		consensusModImpl.MethodByName("SetStep").Call([]reflect.Value{reflect.ValueOf(testStep)})
-		consensusModImpl.MethodByName("SetRound").Call([]reflect.Value{reflect.ValueOf(testRound)})
+		consensusModImpl.MethodByName("SetRound").Call([]reflect.Value{reflect.ValueOf(uint64(0))})
 		consensusModImpl.MethodByName("SetLeaderId").Call([]reflect.Value{reflect.Zero(reflect.TypeOf(&leaderId))})
 
 		// utilityContext is only set on new rounds, which is skipped in this test
@@ -250,105 +249,119 @@ func TestHotstuff4NodesByzantineLeaderProposalRejected(t *testing.T) {
 		consensusModImpl.MethodByName("SetUtilityContext").Call([]reflect.Value{reflect.ValueOf(utilityContext)})
 	}
 
-	// // Debug message to start consensus by triggering view change
-	// for _, pocketNode := range pocketNodes {
-	// 	TriggerNextView(t, pocketNode)
-	// }
-	// advanceTime(t, clockMock, 10*time.Millisecond)
-
-	// 1. NewRound
-	// newRoundMessages, err := WaitForNetworkConsensusEvents(t, clockMock, eventsChannel, consensus.NewRound, consensus.Propose, numValidators*numValidators, 250, true)
-	// require.NoError(t, err)
-	// for pocketId, pocketNode := range pocketNodes {
-	// 	nodeState := GetConsensusNodeState(pocketNode)
-	// 	assertNodeConsensusView(t, pocketId,
-	// 		typesCons.ConsensusNodeState{
-	// 			Height: 4,
-	// 			Step:   uint8(consensus.NewRound),
-	// 			Round:  1,
-	// 		},
-	// 		nodeState)
-	// 	require.Equal(t, false, nodeState.IsLeader)
-	// 	require.Equal(t, nodeState.LeaderId, typesCons.NodeId(0), "Leader should be empty")
-	// }
-
-	// for _, message := range newRoundMessages {
-	// 	P2PBroadcast(t, pocketNodes, message)
-	// }
-	// advanceTime(t, clockMock, 10*time.Millisecond)
+	leaderConsensusModImpl.MethodByName("SetHeight").Call([]reflect.Value{reflect.ValueOf(leaderByzantineHeight)})
 
 	prepareProposal := &typesCons.HotstuffMessage{
 		Type:          consensus.Propose,
 		Height:        leaderByzantineHeight,
 		Step:          consensus.Prepare, //typesCons.HotstuffStep(testStep),
-		Round:         testRound,
+		Round:         0,
 		Block:         block,
 		Justification: nil,
 	}
 	anyMsg, err := anypb.New(prepareProposal)
 	require.NoError(t, err)
 
-	fmt.Println("\n LEADER IS SENDING WRONG PROPOSAL")
+	// byzantine prposal is broadcasted to nodes.
+	fmt.Println("BYZANTINE PROPOSAL IS BROADCASTED")
 	P2PBroadcast(t, pocketNodes, anyMsg)
 
+	// we expect no node to accept this proposal, since "Node at height 3 < message at height 13"
 	numExpectedMsgs := 0
 	_, err = WaitForNetworkConsensusEvents(t, clockMock, eventsChannel, consensus.Prepare, consensus.Vote, numExpectedMsgs, 250, true)
 	require.NoError(t, err)
 
-	// for nodeId, pocketNode := range pocketNodes {
-	// 	nodeState := GetConsensusNodeState(pocketNode)
-	// 	if nodeId == leaderId {
-	// 		require.Equal(t, consensus.Prepare.String(), typesCons.HotstuffStep(nodeState.Step).String())
-	// 	} else {
-	// 		require.Equal(t, consensus.PreCommit.String(), typesCons.HotstuffStep(nodeState.Step).String())
-	// 	}
-	// 	require.Equal(t, testHeight, nodeState.Height)
-	// 	require.Equal(t, uint8(0), nodeState.Round)
-	// 	require.Equal(t, leaderId, nodeState.LeaderId)
-	// 	//require.Equal(t, leaderId, nodeState.LeaderId, fmt.Sprintf("%d should be the current leader", leaderId))
-	// }
-
 	for pocketId, pocketNode := range pocketNodes {
 		nodeState := GetConsensusNodeState(pocketNode)
-		assertNodeConsensusView(t, pocketId,
-			typesCons.ConsensusNodeState{
-				Height: testHeight,
-				Step:   uint8(consensus.NewRound),
-				Round:  uint8(testRound),
-			},
-			nodeState)
-		//require.Equal(t, false, nodeState.IsLeader)
-		require.Equal(t, typesCons.NodeId(0), nodeState.LeaderId, "Leader should be empty")
+		if pocketId == leaderId {
+			assertNodeConsensusView(t, pocketId,
+				typesCons.ConsensusNodeState{
+					Height: leaderByzantineHeight,
+					Step:   uint8(consensus.Prepare),
+					Round:  uint8(0),
+				},
+				nodeState)
+		} else {
+			assertNodeConsensusView(t, pocketId,
+				typesCons.ConsensusNodeState{
+					Height: testHeight,
+					Step:   uint8(consensus.NewRound),
+					Round:  uint8(0),
+				},
+				nodeState)
+			require.Equal(t, false, nodeState.IsLeader)
+			require.Equal(t, typesCons.NodeId(0), nodeState.LeaderId, "Leader should be empty")
+		}
+
 	}
 
-	// Debug message to start consensus by triggering next view
+	// Triggering next view for receiving newround messages again
 	for _, pocketNode := range pocketNodes {
 		TriggerNextView(t, pocketNode)
 	}
 	advanceTime(t, clockMock, 10*time.Millisecond)
 
-	leaderId = 3
-	leader = pocketNodes[leaderId]
-	for _, pocketNode := range pocketNodes {
-		// Update height, step, leaderId, and utility context via setters exposed with the debug interface
-		consensusModImpl := GetConsensusModImpl(pocketNode)
-		consensusModImpl.MethodByName("SetLeaderId").Call([]reflect.Value{reflect.Zero(reflect.TypeOf(&leaderId))})
-	}
-
-	_, err = WaitForNetworkConsensusEvents(t, clockMock, eventsChannel, consensus.NewRound, consensus.Propose, numValidators*numValidators, 250, true)
+	// waiting for new round messages, now since previous round is failed, the round should be 1
+	newRoundMessages, err := WaitForNetworkConsensusEvents(t, clockMock, eventsChannel, consensus.NewRound, consensus.Propose, numValidators*numValidators, 250, true)
 	require.NoError(t, err)
-
 	for pocketId, pocketNode := range pocketNodes {
 		nodeState := GetConsensusNodeState(pocketNode)
-		assertNodeConsensusView(t, pocketId,
-			typesCons.ConsensusNodeState{
-				Height: testHeight,
-				Step:   uint8(consensus.NewRound),
-				Round:  uint8(testRound + 1),
-			},
-			nodeState)
-		//require.Equal(t, false, nodeState.IsLeader)
-		require.Equal(t, typesCons.NodeId(0), nodeState.LeaderId, "Leader should be empty")
+		if pocketId == leaderId {
+			assertNodeConsensusView(t, pocketId,
+				typesCons.ConsensusNodeState{
+					Height: leaderByzantineHeight,
+					Step:   uint8(consensus.NewRound),
+					Round:  uint8(1),
+				},
+				nodeState)
+		} else {
+			assertNodeConsensusView(t, pocketId,
+				typesCons.ConsensusNodeState{
+					Height: testHeight,
+					Step:   uint8(consensus.NewRound),
+					Round:  uint8(1),
+				},
+				nodeState)
+			require.Equal(t, false, nodeState.IsLeader)
+			require.Equal(t, typesCons.NodeId(0), nodeState.LeaderId, "Leader should be empty")
+		}
+
+	}
+
+	// now, we broadcast benign newround porposals
+	for _, message := range newRoundMessages {
+		P2PBroadcast(t, pocketNodes, message)
+	}
+	advanceTime(t, clockMock, 10*time.Millisecond)
+
+	byzantineLeaderId := leaderId
+	// next leader is 1, after previous leader 3's proposal is rejected. (deterministic order is 2-4-3-1)
+	leaderId = typesCons.NodeId(1)
+	//leader = pocketNodes[leaderId]
+
+	numExpectedMsgs = numValidators * 2
+	_, err = WaitForNetworkConsensusEvents(t, clockMock, eventsChannel, consensus.Prepare, consensus.Propose, numExpectedMsgs, 250, true)
+	require.NoError(t, err)
+	for pocketId, pocketNode := range pocketNodes {
+		nodeState := GetConsensusNodeState(pocketNode)
+		if pocketId == byzantineLeaderId {
+			assertNodeConsensusView(t, pocketId,
+				typesCons.ConsensusNodeState{
+					Height: leaderByzantineHeight,
+					Step:   uint8(consensus.Prepare),
+					Round:  uint8(1),
+				},
+				nodeState)
+		} else {
+			assertNodeConsensusView(t, pocketId,
+				typesCons.ConsensusNodeState{
+					Height: testHeight,
+					Step:   uint8(consensus.Prepare),
+					Round:  uint8(1),
+				},
+				nodeState)
+			require.Equal(t, leaderId, nodeState.LeaderId)
+		}
 	}
 
 }
