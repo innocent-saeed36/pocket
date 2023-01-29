@@ -2,14 +2,17 @@ package e2e_tests
 
 import (
 	"fmt"
+	"reflect"
 	"testing"
 	"time"
 
 	"github.com/benbjohnson/clock"
 	"github.com/pokt-network/pocket/consensus"
 	typesCons "github.com/pokt-network/pocket/consensus/types"
+	coreTypes "github.com/pokt-network/pocket/shared/core/types"
 	"github.com/pokt-network/pocket/shared/modules"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/types/known/anypb"
 )
 
 func TestHotstuff4Nodes1BlockHappyPath(t *testing.T) {
@@ -188,6 +191,166 @@ func TestHotstuff4Nodes1BlockHappyPath(t *testing.T) {
 			nodeState)
 		require.Equal(t, nodeState.LeaderId, typesCons.NodeId(0), "Leader should be empty")
 	}
+}
+
+func TestHotstuff4NodesByzantineLeaderProposalRejected(t *testing.T) {
+	fmt.Println("\n STARTING BYZANTINE NODE TEST")
+	// Test preparation
+	clockMock := clock.NewMock()
+	timeReminder(t, clockMock, time.Second)
+
+	// Test configs
+	runtimeMgrs := GenerateNodeRuntimeMgrs(t, numValidators, clockMock)
+	buses := GenerateBuses(t, runtimeMgrs)
+
+	// Create & start test pocket nodes
+	eventsChannel := make(modules.EventsChannel, 100)
+	pocketNodes := CreateTestConsensusPocketNodes(t, buses, eventsChannel)
+	StartAllTestPocketNodes(t, pocketNodes)
+
+	testHeight := uint64(3)
+	testStep := uint8(consensus.NewRound)
+	testRound := uint64(0)
+
+	leaderId := typesCons.NodeId(3)
+	leader := pocketNodes[leaderId]
+	consensusPK, err := leader.GetBus().GetConsensusModule().GetPrivateKey()
+	require.NoError(t, err)
+
+	leaderByzantineHeight := testHeight + 10
+
+	// Placeholder block
+	blockHeader := &coreTypes.BlockHeader{
+		Height:            leaderByzantineHeight,
+		StateHash:         stateHash,
+		PrevStateHash:     "",
+		NumTxs:            0,
+		ProposerAddress:   consensusPK.Address(),
+		QuorumCertificate: nil,
+	}
+	block := &coreTypes.Block{
+		BlockHeader:  blockHeader,
+		Transactions: make([][]byte, 0),
+	}
+
+	leaderConsensusModImpl := GetConsensusModImpl(leader)
+	leaderConsensusModImpl.MethodByName("SetBlock").Call([]reflect.Value{reflect.ValueOf(block)})
+
+	for _, pocketNode := range pocketNodes {
+		// Update height, step, leaderId, and utility context via setters exposed with the debug interface
+		consensusModImpl := GetConsensusModImpl(pocketNode)
+		consensusModImpl.MethodByName("SetHeight").Call([]reflect.Value{reflect.ValueOf(testHeight)})
+		consensusModImpl.MethodByName("SetStep").Call([]reflect.Value{reflect.ValueOf(testStep)})
+		consensusModImpl.MethodByName("SetRound").Call([]reflect.Value{reflect.ValueOf(testRound)})
+		consensusModImpl.MethodByName("SetLeaderId").Call([]reflect.Value{reflect.Zero(reflect.TypeOf(&leaderId))})
+
+		// utilityContext is only set on new rounds, which is skipped in this test
+		utilityContext, err := pocketNode.GetBus().GetUtilityModule().NewContext(int64(testHeight))
+		require.NoError(t, err)
+		consensusModImpl.MethodByName("SetUtilityContext").Call([]reflect.Value{reflect.ValueOf(utilityContext)})
+	}
+
+	// // Debug message to start consensus by triggering view change
+	// for _, pocketNode := range pocketNodes {
+	// 	TriggerNextView(t, pocketNode)
+	// }
+	// advanceTime(t, clockMock, 10*time.Millisecond)
+
+	// 1. NewRound
+	// newRoundMessages, err := WaitForNetworkConsensusEvents(t, clockMock, eventsChannel, consensus.NewRound, consensus.Propose, numValidators*numValidators, 250, true)
+	// require.NoError(t, err)
+	// for pocketId, pocketNode := range pocketNodes {
+	// 	nodeState := GetConsensusNodeState(pocketNode)
+	// 	assertNodeConsensusView(t, pocketId,
+	// 		typesCons.ConsensusNodeState{
+	// 			Height: 4,
+	// 			Step:   uint8(consensus.NewRound),
+	// 			Round:  1,
+	// 		},
+	// 		nodeState)
+	// 	require.Equal(t, false, nodeState.IsLeader)
+	// 	require.Equal(t, nodeState.LeaderId, typesCons.NodeId(0), "Leader should be empty")
+	// }
+
+	// for _, message := range newRoundMessages {
+	// 	P2PBroadcast(t, pocketNodes, message)
+	// }
+	// advanceTime(t, clockMock, 10*time.Millisecond)
+
+	prepareProposal := &typesCons.HotstuffMessage{
+		Type:          consensus.Propose,
+		Height:        leaderByzantineHeight,
+		Step:          consensus.Prepare, //typesCons.HotstuffStep(testStep),
+		Round:         testRound,
+		Block:         block,
+		Justification: nil,
+	}
+	anyMsg, err := anypb.New(prepareProposal)
+	require.NoError(t, err)
+
+	fmt.Println("\n LEADER IS SENDING WRONG PROPOSAL")
+	P2PBroadcast(t, pocketNodes, anyMsg)
+
+	numExpectedMsgs := 0
+	_, err = WaitForNetworkConsensusEvents(t, clockMock, eventsChannel, consensus.Prepare, consensus.Vote, numExpectedMsgs, 250, true)
+	require.NoError(t, err)
+
+	// for nodeId, pocketNode := range pocketNodes {
+	// 	nodeState := GetConsensusNodeState(pocketNode)
+	// 	if nodeId == leaderId {
+	// 		require.Equal(t, consensus.Prepare.String(), typesCons.HotstuffStep(nodeState.Step).String())
+	// 	} else {
+	// 		require.Equal(t, consensus.PreCommit.String(), typesCons.HotstuffStep(nodeState.Step).String())
+	// 	}
+	// 	require.Equal(t, testHeight, nodeState.Height)
+	// 	require.Equal(t, uint8(0), nodeState.Round)
+	// 	require.Equal(t, leaderId, nodeState.LeaderId)
+	// 	//require.Equal(t, leaderId, nodeState.LeaderId, fmt.Sprintf("%d should be the current leader", leaderId))
+	// }
+
+	for pocketId, pocketNode := range pocketNodes {
+		nodeState := GetConsensusNodeState(pocketNode)
+		assertNodeConsensusView(t, pocketId,
+			typesCons.ConsensusNodeState{
+				Height: testHeight,
+				Step:   uint8(consensus.NewRound),
+				Round:  uint8(testRound),
+			},
+			nodeState)
+		//require.Equal(t, false, nodeState.IsLeader)
+		require.Equal(t, typesCons.NodeId(0), nodeState.LeaderId, "Leader should be empty")
+	}
+
+	// Debug message to start consensus by triggering next view
+	for _, pocketNode := range pocketNodes {
+		TriggerNextView(t, pocketNode)
+	}
+	advanceTime(t, clockMock, 10*time.Millisecond)
+
+	leaderId = 3
+	leader = pocketNodes[leaderId]
+	for _, pocketNode := range pocketNodes {
+		// Update height, step, leaderId, and utility context via setters exposed with the debug interface
+		consensusModImpl := GetConsensusModImpl(pocketNode)
+		consensusModImpl.MethodByName("SetLeaderId").Call([]reflect.Value{reflect.Zero(reflect.TypeOf(&leaderId))})
+	}
+
+	_, err = WaitForNetworkConsensusEvents(t, clockMock, eventsChannel, consensus.NewRound, consensus.Propose, numValidators*numValidators, 250, true)
+	require.NoError(t, err)
+
+	for pocketId, pocketNode := range pocketNodes {
+		nodeState := GetConsensusNodeState(pocketNode)
+		assertNodeConsensusView(t, pocketId,
+			typesCons.ConsensusNodeState{
+				Height: testHeight,
+				Step:   uint8(consensus.NewRound),
+				Round:  uint8(testRound + 1),
+			},
+			nodeState)
+		//require.Equal(t, false, nodeState.IsLeader)
+		require.Equal(t, typesCons.NodeId(0), nodeState.LeaderId, "Leader should be empty")
+	}
+
 }
 
 // TODO: Implement these tests and use them as a starting point for new ones. Consider using ChatGPT to help you out :)
