@@ -173,3 +173,33 @@ sequenceDiagram
     %% Validate the computed hash
     C->>C: Compare local hash<br>against proposed hash
 ```
+
+## Block Validation
+
+
+
+- `ApplyBlock` - 
+- `CreateAndApplyProposalBlock` - R
+
+```mermaid
+graph TD
+    B[Should I prepare a new block?] --> |Wait for 2/3+ NEWROUND messages| C
+
+    C[Am I the leader?] --> |Yes| D
+    C[Am I the leader?] --> |No| Z
+
+    D[Did I get any prepareQCs?] --> |Find highest valid prepareQC| E
+    D[Did I get any prepareQCs?] --> |No| Z
+
+    E[Am I ahead of highPrepareQC?] --> |Yes| G
+    E[Am I ahead of highPrepareQC?] --> |No| Z
+
+    G[Do I have a lockedQC] --> |No| H
+    G[Do I have a lockedQC] --> |Yes| I
+
+    I[Is prepareQC.view > lockedQC.view] --> |"No<br>(lockedQC.block)"| Z
+    I[Is prepareQC.view > lockedQC.view] --> |"Yes<br>(prepareQC.block)"| Z
+
+    H[CreateAndApplyProposalBlock]
+    Z[ApplyBlock]
+```
