@@ -27,11 +27,14 @@ var isModifierRe = regexp.MustCompile(`^(Insert|Set|Add|Subtract)`) // Add Updat
 // and key-value stores.
 // IMPROVE(#361): Improve the output of this benchmark to be more informative and human readable.
 func BenchmarkStateHash(b *testing.B) {
+	testPersistenceMod, teardownSuite := setupSuite(withGenesis)
+	defer teardownSuite()
+
 	log.SetOutput(ioutil.Discard)
 	defer log.SetOutput(os.Stderr)
 
-	clearAllState()
-	b.Cleanup(clearAllState)
+	clearAllState(testPersistenceMod)
+	b.Cleanup(func() { clearAllState(testPersistenceMod) })
 
 	// NOTE: The idiomatic way to run Go benchmarks is to use `b.N` and the `-benchtime` flag,
 	// to specify how long the benchmark should take. However, the code below is non-idiomatic
@@ -63,7 +66,7 @@ func BenchmarkStateHash(b *testing.B) {
 		// Since this is a benchmark, errors are not
 		b.Run(fmt.Sprintf("height=%d;txs=%d,ops=%d", numHeights, numTxPerHeight, numOpsPerTx), func(b *testing.B) {
 			for height := int64(0); height < numHeights; height++ {
-				db := NewTestPostgresContext(b, height)
+				db := NewTestPostgresContext(b, testPersistenceMod, height)
 				for txIdx := 0; txIdx < numTxPerHeight; txIdx++ {
 					for opIdx := 0; opIdx < numOpsPerTx; opIdx++ {
 						callRandomDatabaseModifierFunc(db, false)

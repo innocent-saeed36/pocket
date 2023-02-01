@@ -16,13 +16,19 @@ const (
 )
 
 func TestInitGenesisParams(t *testing.T) {
-	db := NewTestPostgresContext(t, 0)
+	testPersistenceMod, teardownSuite := setupSuite(withGenesis)
+	defer teardownSuite()
+
+	db := NewTestPostgresContext(t, testPersistenceMod, 0)
 	err := db.InitGenesisParams(test_artifacts.DefaultParams())
 	require.NoError(t, err)
 }
 
 func TestGetSetIntParam(t *testing.T) {
-	db := NewTestPostgresContext(t, 0)
+	testPersistenceMod, teardownSuite := setupSuite(withGenesis)
+	defer teardownSuite()
+
+	db := NewTestPostgresContext(t, testPersistenceMod, 0)
 
 	err := db.InitGenesisParams(test_artifacts.DefaultParams())
 	require.NoError(t, err)
@@ -42,7 +48,10 @@ func TestGetSetIntParam(t *testing.T) {
 }
 
 func TestGetSetStringParam(t *testing.T) {
-	db := NewTestPostgresContext(t, 0)
+	testPersistenceMod, teardownSuite := setupSuite(withGenesis)
+	defer teardownSuite()
+
+	db := NewTestPostgresContext(t, testPersistenceMod, 0)
 
 	err := db.InitGenesisParams(test_artifacts.DefaultParams())
 	require.NoError(t, err)
@@ -62,7 +71,10 @@ func TestGetSetStringParam(t *testing.T) {
 }
 
 func TestGetSetByteArrayParam(t *testing.T) {
-	db := NewTestPostgresContext(t, 0)
+	testPersistenceMod, teardownSuite := setupSuite(withGenesis)
+	defer teardownSuite()
+
+	db := NewTestPostgresContext(t, testPersistenceMod, 0)
 
 	err := db.InitGenesisParams(test_artifacts.DefaultParams())
 	require.NoError(t, err)
@@ -83,7 +95,10 @@ func TestGetSetByteArrayParam(t *testing.T) {
 }
 
 func TestGetSetToggleIntFlag(t *testing.T) {
-	db := NewTestPostgresContext(t, 0)
+	testPersistenceMod, teardownSuite := setupSuite(withGenesis)
+	defer teardownSuite()
+
+	db := NewTestPostgresContext(t, testPersistenceMod, 0)
 
 	err := db.InitFlags()
 	require.NoError(t, err)
@@ -120,7 +135,10 @@ func TestGetSetToggleIntFlag(t *testing.T) {
 }
 
 func TestGetSetToggleStringFlag(t *testing.T) {
-	db := NewTestPostgresContext(t, 0)
+	testPersistenceMod, teardownSuite := setupSuite(withGenesis)
+	defer teardownSuite()
+
+	db := NewTestPostgresContext(t, testPersistenceMod, 0)
 
 	err := db.InitGenesisParams(test_artifacts.DefaultParams())
 	require.NoError(t, err)
@@ -156,7 +174,10 @@ func TestGetSetToggleStringFlag(t *testing.T) {
 }
 
 func TestGetSetToggleByteArrayFlag(t *testing.T) {
-	db := NewTestPostgresContext(t, 0)
+	testPersistenceMod, teardownSuite := setupSuite(withGenesis)
+	defer teardownSuite()
+
+	db := NewTestPostgresContext(t, testPersistenceMod, 0)
 
 	err := db.InitGenesisParams(test_artifacts.DefaultParams())
 	require.NoError(t, err)

@@ -44,6 +44,9 @@ type TestReplayableBlock struct {
 }
 
 func TestStateHash_DeterministicStateWhenUpdatingAppStake(t *testing.T) {
+	testPersistenceMod, teardownSuite := setupSuite(withGenesis)
+	defer teardownSuite()
+
 	// These hashes were determined manually by running the test, but hardcoded to guarantee
 	// that the business logic doesn't change and that they remain deterministic. Anytime the business
 	// logic changes, these hashes will need to be updated based on the test output.
@@ -60,7 +63,7 @@ func TestStateHash_DeterministicStateWhenUpdatingAppStake(t *testing.T) {
 		heightBz := heightToBytes(height)
 		expectedStateHash := stateHashes[i]
 
-		db := NewTestPostgresContext(t, height)
+		db := NewTestPostgresContext(t, testPersistenceMod, height)
 
 		apps, err := db.GetAllApps(height)
 		require.NoError(t, err)
@@ -138,13 +141,13 @@ func TestStateHash_ReplayingRandomTransactionsIsDeterministic(t *testing.T) {
 		numReplays := testCase.numReplays
 
 		t.Run(fmt.Sprintf("ReplayingRandomTransactionsIsDeterministic(%d;%d,%d,%d", numHeights, numTxsPerHeight, numOpsPerTx, numReplays), func(t *testing.T) {
-			t.Cleanup(clearAllState)
-			clearAllState()
+			testPersistenceMod, teardownSuite := setupSuite(cleanSlate)
+			defer teardownSuite()
 
 			replayableBlocks := make([]*TestReplayableBlock, numHeights)
 
 			for height := int64(0); height < int64(numHeights); height++ {
-				db := NewTestPostgresContext(t, height)
+				db := NewTestPostgresContext(t, testPersistenceMod, height)
 				replayableTxs := make([]*TestReplayableTransaction, numTxsPerHeight)
 
 				for txIdx := 0; txIdx < numTxsPerHeight; txIdx++ {
@@ -190,7 +193,7 @@ func TestStateHash_ReplayingRandomTransactionsIsDeterministic(t *testing.T) {
 
 			for i := 0; i < numReplays; i++ {
 				t.Run("verify block", func(t *testing.T) {
-					verifyReplayableBlocks(t, replayableBlocks)
+					verifyReplayableBlocks(t, testPersistenceMod, replayableBlocks)
 				})
 			}
 		})
@@ -205,12 +208,12 @@ func TestStateHash_TreeUpdatesNegativeTestCase(t *testing.T) {
 	// ADDTEST(#361): Create an issue dedicated to increasing the test coverage for state hashes
 }
 
-func verifyReplayableBlocks(t *testing.T, replayableBlocks []*TestReplayableBlock) {
-	t.Cleanup(clearAllState)
-	clearAllState()
+func verifyReplayableBlocks(t *testing.T, testPersistenceMod modules.PersistenceModule, replayableBlocks []*TestReplayableBlock) {
+	t.Cleanup(func() { clearAllState(testPersistenceMod) })
+	clearAllState(testPersistenceMod)
 
 	for _, block := range replayableBlocks {
-		db := NewTestPostgresContext(t, block.height)
+		db := NewTestPostgresContext(t, testPersistenceMod, block.height)
 
 		for _, tx := range block.txs {
 			for _, op := range tx.operations {

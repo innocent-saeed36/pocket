@@ -8,6 +8,7 @@ import (
 	"math/rand"
 	"os"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -55,20 +56,43 @@ var (
 	genesisStateNumApplications = 1
 	genesisStateNumFishermen    = 1
 )
-var testPersistenceMod modules.PersistenceModule // initialized in TestMain
+
+var (
+	persistenceMod      modules.PersistenceModule // initialized in TestMain
+	persistenceModMutex sync.Mutex
+)
 
 // See https://github.com/ory/dockertest as reference for the template of this code
 // Postgres example can be found here: https://github.com/ory/dockertest/blob/v3/examples/PostgreSQL.md
 func TestMain(m *testing.M) {
 	pool, resource, dbUrl := test_artifacts.SetupPostgresDocker()
-	testPersistenceMod = newTestPersistenceModule(dbUrl)
+	persistenceMod = newTestPersistenceModule(dbUrl)
 	exitCode := m.Run()
 	test_artifacts.CleanupPostgresDocker(m, pool, resource)
 	os.Exit(exitCode)
 }
 
+type suiteStateConfig bool
+
+var (
+	withGenesis suiteStateConfig = true
+	cleanSlate  suiteStateConfig = false
+)
+
+func setupSuite(config suiteStateConfig) (modules.PersistenceModule, func()) {
+	persistenceModMutex.Lock()
+	clearAllState(persistenceMod)
+	if config == withGenesis {
+		resetStateToGenesis(persistenceMod)
+	}
+	return persistenceMod, func() {
+		clearAllState(persistenceMod)
+		persistenceModMutex.Unlock()
+	}
+}
+
 // IMPROVE: Look into returning `testPersistenceMod` to avoid exposing underlying abstraction.
-func NewTestPostgresContext(t testing.TB, height int64) *persistence.PostgresContext {
+func NewTestPostgresContext(t testing.TB, testPersistenceMod modules.PersistenceModule, height int64) *persistence.PostgresContext {
 	ctx, err := testPersistenceMod.NewRWContext(height)
 	if err != nil {
 		log.Fatalf("Error creating new context: %v\n", err)
@@ -78,10 +102,6 @@ func NewTestPostgresContext(t testing.TB, height int64) *persistence.PostgresCon
 	if !ok {
 		log.Fatalf("Error casting RW context to Postgres context")
 	}
-
-	// TECHDEBT: This should not be part of `NewTestPostgresContext`. It causes unnecessary resets
-	// if we call `NewTestPostgresContext` more than once in a single test.
-	t.Cleanup(resetStateToGenesis)
 
 	return db
 }
@@ -132,9 +152,12 @@ func fuzzSingleProtocolActor(
 	getTestActor func(db *persistence.PostgresContext, address string) (*coreTypes.Actor, error),
 	protocolActorSchema types.ProtocolActorSchema,
 ) {
+	testPersistenceMod, teardownSuite := setupSuite(withGenesis)
+	defer teardownSuite()
+
 	// Clear the genesis state.
-	clearAllState()
-	db := NewTestPostgresContext(f, 0)
+	clearAllState(testPersistenceMod)
+	db := NewTestPostgresContext(f, testPersistenceMod, 0)
 
 	actor, err := newTestActor()
 	require.NoError(f, err)
@@ -339,7 +362,7 @@ func setRandomSeed() {
 }
 
 // This is necessary for unit tests that are dependant on a baseline genesis state
-func resetStateToGenesis() {
+func resetStateToGenesis(testPersistenceMod modules.PersistenceModule) {
 	if err := testPersistenceMod.ReleaseWriteContext(); err != nil {
 		log.Fatalf("Error releasing write context: %v\n", err)
 	}
@@ -352,7 +375,7 @@ func resetStateToGenesis() {
 }
 
 // This is necessary for unit tests that are dependant on a completely clear state when starting
-func clearAllState() {
+func clearAllState(testPersistenceMod modules.PersistenceModule) {
 	if err := testPersistenceMod.ReleaseWriteContext(); err != nil {
 		log.Fatalf("Error releasing write context: %v\n", err)
 	}

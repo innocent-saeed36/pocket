@@ -21,7 +21,10 @@ func FuzzValidator(f *testing.F) {
 }
 
 func TestGetSetValidatorStakeAmount(t *testing.T) {
-	db := NewTestPostgresContext(t, 1)
+	testPersistenceMod, teardownSuite := setupSuite(withGenesis)
+	defer teardownSuite()
+
+	db := NewTestPostgresContext(t, testPersistenceMod, 1)
 	getTestGetSetStakeAmountTest(t, db, createAndInsertDefaultTestValidator, db.GetValidatorStakeAmount, db.SetValidatorStakeAmount, 1)
 }
 
@@ -33,7 +36,10 @@ func TestGetValidatorUpdatedAtHeight(t *testing.T) {
 }
 
 func TestInsertValidatorAndExists(t *testing.T) {
-	db := NewTestPostgresContext(t, 0)
+	testPersistenceMod, teardownSuite := setupSuite(withGenesis)
+	defer teardownSuite()
+
+	db := NewTestPostgresContext(t, testPersistenceMod, 0)
 
 	validator, err := createAndInsertDefaultTestValidator(db)
 	require.NoError(t, err)
@@ -65,7 +71,10 @@ func TestInsertValidatorAndExists(t *testing.T) {
 }
 
 func TestUpdateValidator(t *testing.T) {
-	db := NewTestPostgresContext(t, 0)
+	testPersistenceMod, teardownSuite := setupSuite(withGenesis)
+	defer teardownSuite()
+
+	db := NewTestPostgresContext(t, testPersistenceMod, 0)
 
 	validator, err := createAndInsertDefaultTestValidator(db)
 	require.NoError(t, err)
@@ -93,7 +102,10 @@ func TestUpdateValidator(t *testing.T) {
 }
 
 func TestGetValidatorsReadyToUnstake(t *testing.T) {
-	db := NewTestPostgresContext(t, 0)
+	testPersistenceMod, teardownSuite := setupSuite(withGenesis)
+	defer teardownSuite()
+
+	db := NewTestPostgresContext(t, testPersistenceMod, 0)
 
 	validator, err := createAndInsertDefaultTestValidator(db)
 	require.NoError(t, err)
@@ -137,7 +149,10 @@ func TestGetValidatorsReadyToUnstake(t *testing.T) {
 }
 
 func TestGetValidatorStatus(t *testing.T) {
-	db := NewTestPostgresContext(t, 1)
+	testPersistenceMod, teardownSuite := setupSuite(withGenesis)
+	defer teardownSuite()
+
+	db := NewTestPostgresContext(t, testPersistenceMod, 1)
 
 	validator, err := createAndInsertDefaultTestValidator(db)
 	require.NoError(t, err)
@@ -157,7 +172,10 @@ func TestGetValidatorStatus(t *testing.T) {
 }
 
 func TestGetValidatorPauseHeightIfExists(t *testing.T) {
-	db := NewTestPostgresContext(t, 1)
+	testPersistenceMod, teardownSuite := setupSuite(withGenesis)
+	defer teardownSuite()
+
+	db := NewTestPostgresContext(t, testPersistenceMod, 1)
 
 	validator, err := createAndInsertDefaultTestValidator(db)
 	require.NoError(t, err)
@@ -178,7 +196,10 @@ func TestGetValidatorPauseHeightIfExists(t *testing.T) {
 }
 
 func TestSetValidatorPauseHeightAndUnstakeLater(t *testing.T) {
-	db := NewTestPostgresContext(t, 0)
+	testPersistenceMod, teardownSuite := setupSuite(withGenesis)
+	defer teardownSuite()
+
+	db := NewTestPostgresContext(t, testPersistenceMod, 0)
 
 	validator, err := createAndInsertDefaultTestValidator(db)
 	require.NoError(t, err)
@@ -205,7 +226,10 @@ func TestSetValidatorPauseHeightAndUnstakeLater(t *testing.T) {
 }
 
 func TestGetValidatorOutputAddress(t *testing.T) {
-	db := NewTestPostgresContext(t, 0)
+	testPersistenceMod, teardownSuite := setupSuite(withGenesis)
+	defer teardownSuite()
+
+	db := NewTestPostgresContext(t, testPersistenceMod, 0)
 
 	validator, err := createAndInsertDefaultTestValidator(db)
 	require.NoError(t, err)

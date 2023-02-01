@@ -23,7 +23,10 @@ func FuzzFisherman(f *testing.F) {
 }
 
 func TestGetSetFishermanStakeAmount(t *testing.T) {
-	db := NewTestPostgresContext(t, 1)
+	testPersistenceMod, teardownSuite := setupSuite(withGenesis)
+	defer teardownSuite()
+
+	db := NewTestPostgresContext(t, testPersistenceMod, 1)
 	getTestGetSetStakeAmountTest(t, db, createAndInsertDefaultTestFisherman, db.GetFishermanStakeAmount, db.SetFishermanStakeAmount, 1)
 }
 
@@ -35,7 +38,10 @@ func TestGetFishermanUpdatedAtHeight(t *testing.T) {
 }
 
 func TestInsertFishermanAndExists(t *testing.T) {
-	db := NewTestPostgresContext(t, 0)
+	testPersistenceMod, teardownSuite := setupSuite(withGenesis)
+	defer teardownSuite()
+
+	db := NewTestPostgresContext(t, testPersistenceMod, 0)
 
 	fisherman, err := createAndInsertDefaultTestFisherman(db)
 	require.NoError(t, err)
@@ -66,7 +72,10 @@ func TestInsertFishermanAndExists(t *testing.T) {
 }
 
 func TestUpdateFisherman(t *testing.T) {
-	db := NewTestPostgresContext(t, 0)
+	testPersistenceMod, teardownSuite := setupSuite(withGenesis)
+	defer teardownSuite()
+
+	db := NewTestPostgresContext(t, testPersistenceMod, 0)
 
 	fisherman, err := createAndInsertDefaultTestFisherman(db)
 	require.NoError(t, err)
@@ -98,7 +107,10 @@ func TestUpdateFisherman(t *testing.T) {
 }
 
 func TestGetFishermenReadyToUnstake(t *testing.T) {
-	db := NewTestPostgresContext(t, 0)
+	testPersistenceMod, teardownSuite := setupSuite(withGenesis)
+	defer teardownSuite()
+
+	db := NewTestPostgresContext(t, testPersistenceMod, 0)
 
 	fisherman, err := createAndInsertDefaultTestFisherman(db)
 	require.NoError(t, err)
@@ -140,7 +152,10 @@ func TestGetFishermenReadyToUnstake(t *testing.T) {
 }
 
 func TestGetFishermanStatus(t *testing.T) {
-	db := NewTestPostgresContext(t, 1)
+	testPersistenceMod, teardownSuite := setupSuite(withGenesis)
+	defer teardownSuite()
+
+	db := NewTestPostgresContext(t, testPersistenceMod, 1)
 
 	fisherman, err := createAndInsertDefaultTestFisherman(db)
 	require.NoError(t, err)
@@ -160,7 +175,10 @@ func TestGetFishermanStatus(t *testing.T) {
 }
 
 func TestGetFishermanPauseHeightIfExists(t *testing.T) {
-	db := NewTestPostgresContext(t, 1)
+	testPersistenceMod, teardownSuite := setupSuite(withGenesis)
+	defer teardownSuite()
+
+	db := NewTestPostgresContext(t, testPersistenceMod, 1)
 
 	fisherman, err := createAndInsertDefaultTestFisherman(db)
 	require.NoError(t, err)
@@ -180,7 +198,10 @@ func TestGetFishermanPauseHeightIfExists(t *testing.T) {
 }
 
 func TestSetFishermanPauseHeightAndUnstakeLater(t *testing.T) {
-	db := NewTestPostgresContext(t, 0)
+	testPersistenceMod, teardownSuite := setupSuite(withGenesis)
+	defer teardownSuite()
+
+	db := NewTestPostgresContext(t, testPersistenceMod, 0)
 
 	fisherman, err := createAndInsertDefaultTestFisherman(db)
 	require.NoError(t, err)
@@ -207,7 +228,10 @@ func TestSetFishermanPauseHeightAndUnstakeLater(t *testing.T) {
 }
 
 func TestGetFishermanOutputAddress(t *testing.T) {
-	db := NewTestPostgresContext(t, 0)
+	testPersistenceMod, teardownSuite := setupSuite(withGenesis)
+	defer teardownSuite()
+
+	db := NewTestPostgresContext(t, testPersistenceMod, 0)
 
 	fisherman, err := createAndInsertDefaultTestFisherman(db)
 	require.NoError(t, err)

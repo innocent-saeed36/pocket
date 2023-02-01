@@ -87,7 +87,7 @@ func connectToDatabase(cfg *configs.PersistenceConfig) (*pgx.Conn, error) {
 	} else {
 		return nil, fmt.Errorf("unable to set max connection idle time : %v", err)
 	}
-	config.MaxConns = cfg.GetMaxConnsCount()
+	config.MaxConns = cfg.GetMaxConnsCount() + 100
 	config.MinConns = cfg.GetMinConnsCount()
 	healthCheckPeriod, err := time.ParseDuration(cfg.GetHealthCheckPeriod())
 	if err == nil {
@@ -96,7 +96,7 @@ func connectToDatabase(cfg *configs.PersistenceConfig) (*pgx.Conn, error) {
 		return nil, fmt.Errorf("unable to set healthcheck period: %v", err)
 	}
 
-	pool, err := pgxpool.NewWithConfig(context.Background(), config)
+	pool, err := pgxpool.NewWithConfig(ctx, config)
 	if err != nil {
 		return nil, fmt.Errorf("unable to connect to database: %v", err)
 	}

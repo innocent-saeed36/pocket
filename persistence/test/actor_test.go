@@ -8,7 +8,10 @@ import (
 )
 
 func TestGetAllStakedActors(t *testing.T) {
-	db := NewTestPostgresContext(t, 0)
+	testPersistenceMod, teardownSuite := setupSuite(withGenesis)
+	defer teardownSuite()
+
+	db := NewTestPostgresContext(t, testPersistenceMod, 0)
 	expectedActorCount := genesisStateNumValidators + genesisStateNumServiceNodes + genesisStateNumApplications + genesisStateNumFishermen
 
 	actors, err := db.GetAllStakedActors(0)

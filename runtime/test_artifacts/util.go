@@ -35,6 +35,7 @@ func SetupPostgresDocker() (*dockertest.Pool, *dockertest.Resource, string) {
 			"POSTGRES_USER=" + user,
 			"POSTGRES_PASSWORD=" + password,
 			"POSTGRES_DB=" + db,
+			"POSTGRESQL_FSYNC=off", // disable fsync for performance
 		},
 	}
 

@@ -158,7 +158,10 @@ func getAllActorsUpdatedAtHeightTest[T any](
 	getActorsUpdated func(*persistence.PostgresContext, int64) ([]*T, error),
 	numActorsInTestGenesis int,
 ) {
-	db := NewTestPostgresContext(t, 0)
+	testPersistenceMod, teardownSuite := setupSuite(withGenesis)
+	defer teardownSuite()
+
+	db := NewTestPostgresContext(t, testPersistenceMod, 0)
 
 	// Check num actors in genesis
 	accs, err := getActorsUpdated(db, 0)
@@ -177,7 +180,7 @@ func getAllActorsUpdatedAtHeightTest[T any](
 	// Close context at height 0 without committing new Pool
 	require.NoError(t, db.Close())
 	// start a new context at height 1
-	db = NewTestPostgresContext(t, 1)
+	db = NewTestPostgresContext(t, testPersistenceMod, 1)
 
 	// Verify that num actors at height 0 is genesis because the new one was not committed
 	accs, err = getActorsUpdated(db, 0)
@@ -196,7 +199,7 @@ func getAllActorsUpdatedAtHeightTest[T any](
 	// Commit & close the context at height 1
 	require.NoError(t, db.Commit(nil, nil))
 	// start a new context at height 2
-	db = NewTestPostgresContext(t, 2)
+	db = NewTestPostgresContext(t, testPersistenceMod, 2)
 
 	// Verify only 1 actor was updated at height 1
 	accs, err = getActorsUpdated(db, 1)

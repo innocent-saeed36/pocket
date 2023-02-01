@@ -7,7 +7,10 @@ import (
 )
 
 func TestGetBlockBlockHash(t *testing.T) {
-	db := NewTestPostgresContext(t, 0)
+	testPersistenceMod, teardownSuite := setupSuite(withGenesis)
+	defer teardownSuite()
+
+	db := NewTestPostgresContext(t, testPersistenceMod, 0)
 
 	// Cannot get prev hash at height 0
 	blockHash, err := db.GetBlockHash(0)

@@ -18,7 +18,10 @@ import (
 // TODO(andrew): Find all places where we import twice and update the imports appropriately.
 
 func FuzzAccountAmount(f *testing.F) {
-	db := NewTestPostgresContext(f, 0)
+	testPersistenceMod, teardownSuite := setupSuite(withGenesis)
+	defer teardownSuite()
+
+	db := NewTestPostgresContext(f, testPersistenceMod, 0)
 	operations := []string{
 		"AddAmount",
 		"SubAmount",
@@ -87,7 +90,10 @@ func FuzzAccountAmount(f *testing.F) {
 }
 
 func TestDefaultNonExistentAccountAmount(t *testing.T) {
-	db := NewTestPostgresContext(t, 0)
+	testPersistenceMod, teardownSuite := setupSuite(withGenesis)
+	defer teardownSuite()
+
+	db := NewTestPostgresContext(t, testPersistenceMod, 0)
 	addr, err := crypto.GenerateAddress()
 	require.NoError(t, err)
 	accountAmount, err := db.GetAccountAmount(addr, db.Height)
@@ -96,7 +102,10 @@ func TestDefaultNonExistentAccountAmount(t *testing.T) {
 }
 
 func TestSetAccountAmount(t *testing.T) {
-	db := NewTestPostgresContext(t, 0)
+	testPersistenceMod, teardownSuite := setupSuite(withGenesis)
+	defer teardownSuite()
+
+	db := NewTestPostgresContext(t, testPersistenceMod, 0)
 	account := newTestAccount(t)
 	addrBz, err := hex.DecodeString(account.Address)
 	require.NoError(t, err)
@@ -117,7 +126,10 @@ func TestSetAccountAmount(t *testing.T) {
 }
 
 func TestAddAccountAmount(t *testing.T) {
-	db := NewTestPostgresContext(t, 0)
+	testPersistenceMod, teardownSuite := setupSuite(withGenesis)
+	defer teardownSuite()
+
+	db := NewTestPostgresContext(t, testPersistenceMod, 0)
 	account := newTestAccount(t)
 
 	addrBz, err := hex.DecodeString(account.Address)
@@ -140,7 +152,11 @@ func TestAddAccountAmount(t *testing.T) {
 }
 
 func TestAccountsUpdatedAtHeight(t *testing.T) {
-	db := NewTestPostgresContext(t, 0)
+	testPersistenceMod, teardownSuite := setupSuite(withGenesis)
+	defer teardownSuite()
+
+	db := NewTestPostgresContext(t, testPersistenceMod, 0)
+
 	numAccsInTestGenesis := 8
 
 	// Check num accounts in genesis
@@ -160,7 +176,7 @@ func TestAccountsUpdatedAtHeight(t *testing.T) {
 	// Close context at height 0 without committing new account
 	require.NoError(t, db.Close())
 	// start a new context at height 1
-	db = NewTestPostgresContext(t, 1)
+	db = NewTestPostgresContext(t, testPersistenceMod, 1)
 
 	// Verify that num accounts at height 0 is genesis because the new one was not committed
 	accs, err = db.GetAccountsUpdated(0)
@@ -179,7 +195,7 @@ func TestAccountsUpdatedAtHeight(t *testing.T) {
 	// Commit & close the context at height 1
 	require.NoError(t, db.Commit(nil, nil))
 	// start a new context at height 2
-	db = NewTestPostgresContext(t, 2)
+	db = NewTestPostgresContext(t, testPersistenceMod, 2)
 
 	// Verify only 1 account was updated at height 1
 	accs, err = db.GetAccountsUpdated(1)
@@ -188,7 +204,10 @@ func TestAccountsUpdatedAtHeight(t *testing.T) {
 }
 
 func TestSubAccountAmount(t *testing.T) {
-	db := NewTestPostgresContext(t, 0)
+	testPersistenceMod, teardownSuite := setupSuite(withGenesis)
+	defer teardownSuite()
+
+	db := NewTestPostgresContext(t, testPersistenceMod, 0)
 	account := newTestAccount(t)
 
 	addrBz, err := hex.DecodeString(account.Address)
@@ -210,7 +229,10 @@ func TestSubAccountAmount(t *testing.T) {
 }
 
 func FuzzPoolAmount(f *testing.F) {
-	db := NewTestPostgresContext(f, 0)
+	testPersistenceMod, teardownSuite := setupSuite(withGenesis)
+	defer teardownSuite()
+
+	db := NewTestPostgresContext(f, testPersistenceMod, 0)
 	operations := []string{
 		"AddAmount",
 		"SubAmount",
@@ -274,7 +296,10 @@ func FuzzPoolAmount(f *testing.F) {
 }
 
 func TestDefaultNonExistentPoolAmount(t *testing.T) {
-	db := NewTestPostgresContext(t, 0)
+	testPersistenceMod, teardownSuite := setupSuite(withGenesis)
+	defer teardownSuite()
+
+	db := NewTestPostgresContext(t, testPersistenceMod, 0)
 
 	poolAmount, err := db.GetPoolAmount("some_pool_name", db.Height)
 	require.NoError(t, err)
@@ -282,7 +307,10 @@ func TestDefaultNonExistentPoolAmount(t *testing.T) {
 }
 
 func TestSetPoolAmount(t *testing.T) {
-	db := NewTestPostgresContext(t, 0)
+	testPersistenceMod, teardownSuite := setupSuite(withGenesis)
+	defer teardownSuite()
+
+	db := NewTestPostgresContext(t, testPersistenceMod, 0)
 	pool := newTestPool(t)
 
 	err := db.SetPoolAmount(pool.Address, DefaultStake)
@@ -301,7 +329,10 @@ func TestSetPoolAmount(t *testing.T) {
 }
 
 func TestAddPoolAmount(t *testing.T) {
-	db := NewTestPostgresContext(t, 0)
+	testPersistenceMod, teardownSuite := setupSuite(withGenesis)
+	defer teardownSuite()
+
+	db := NewTestPostgresContext(t, testPersistenceMod, 0)
 	pool := newTestPool(t)
 
 	err := db.SetPoolAmount(pool.Address, DefaultStake)
@@ -321,7 +352,10 @@ func TestAddPoolAmount(t *testing.T) {
 }
 
 func TestSubPoolAmount(t *testing.T) {
-	db := NewTestPostgresContext(t, 0)
+	testPersistenceMod, teardownSuite := setupSuite(withGenesis)
+	defer teardownSuite()
+
+	db := NewTestPostgresContext(t, testPersistenceMod, 0)
 	pool := newTestPool(t)
 	err := db.SetPoolAmount(pool.Address, DefaultStake)
 	require.NoError(t, err)
@@ -339,7 +373,10 @@ func TestSubPoolAmount(t *testing.T) {
 }
 
 func TestGetAllAccounts(t *testing.T) {
-	db := NewTestPostgresContext(t, 0)
+	testPersistenceMod, teardownSuite := setupSuite(withGenesis)
+	defer teardownSuite()
+
+	db := NewTestPostgresContext(t, testPersistenceMod, 0)
 	updateAccount := func(db *persistence.PostgresContext, acc *coreTypes.Account) error {
 		if addr, err := hex.DecodeString(acc.GetAddress()); err == nil {
 			return nil
@@ -352,7 +389,10 @@ func TestGetAllAccounts(t *testing.T) {
 }
 
 func TestGetAllPools(t *testing.T) {
-	db := NewTestPostgresContext(t, 0)
+	testPersistenceMod, teardownSuite := setupSuite(withGenesis)
+	defer teardownSuite()
+
+	db := NewTestPostgresContext(t, testPersistenceMod, 0)
 
 	updatePool := func(db *persistence.PostgresContext, pool *coreTypes.Account) error {
 		return db.AddPoolAmount(pool.GetAddress(), "10")
@@ -362,7 +402,10 @@ func TestGetAllPools(t *testing.T) {
 }
 
 func TestPoolsUpdatedAtHeight(t *testing.T) {
-	db := NewTestPostgresContext(t, 0)
+	testPersistenceMod, teardownSuite := setupSuite(withGenesis)
+	defer teardownSuite()
+
+	db := NewTestPostgresContext(t, testPersistenceMod, 0)
 	numPoolsInTestGenesis := 7
 
 	// Check num Pools in genesis
@@ -382,7 +425,7 @@ func TestPoolsUpdatedAtHeight(t *testing.T) {
 	// Close context at height 0 without committing new Pool
 	require.NoError(t, db.Close())
 	// start a new context at height 1
-	db = NewTestPostgresContext(t, 1)
+	db = NewTestPostgresContext(t, testPersistenceMod, 1)
 
 	// Verify that num Pools at height 0 is genesis because the new one was not committed
 	accs, err = db.GetPoolsUpdated(0)
@@ -401,7 +444,7 @@ func TestPoolsUpdatedAtHeight(t *testing.T) {
 	// Commit & close the context at height 1
 	require.NoError(t, db.Commit(nil, nil))
 	// start a new context at height 2
-	db = NewTestPostgresContext(t, 2)
+	db = NewTestPostgresContext(t, testPersistenceMod, 2)
 
 	// Verify only 1 Pool was updated at height 1
 	accs, err = db.GetPoolsUpdated(1)

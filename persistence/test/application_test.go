@@ -27,7 +27,10 @@ func TestGetApplicationsUpdatedAtHeight(t *testing.T) {
 }
 
 func TestInsertAppAndExists(t *testing.T) {
-	db := NewTestPostgresContext(t, 0)
+	testPersistenceMod, teardownSuite := setupSuite(withGenesis)
+	defer teardownSuite()
+
+	db := NewTestPostgresContext(t, testPersistenceMod, 0)
 
 	app, err := createAndInsertDefaultTestApp(db)
 	require.NoError(t, err)
@@ -58,7 +61,10 @@ func TestInsertAppAndExists(t *testing.T) {
 }
 
 func TestUpdateApp(t *testing.T) {
-	db := NewTestPostgresContext(t, 0)
+	testPersistenceMod, teardownSuite := setupSuite(withGenesis)
+	defer teardownSuite()
+
+	db := NewTestPostgresContext(t, testPersistenceMod, 0)
 
 	app, err := createAndInsertDefaultTestApp(db)
 	require.NoError(t, err)
@@ -90,7 +96,10 @@ func TestUpdateApp(t *testing.T) {
 }
 
 func TestGetAppsReadyToUnstake(t *testing.T) {
-	db := NewTestPostgresContext(t, 0)
+	testPersistenceMod, teardownSuite := setupSuite(withGenesis)
+	defer teardownSuite()
+
+	db := NewTestPostgresContext(t, testPersistenceMod, 0)
 
 	app, err := createAndInsertDefaultTestApp(db)
 	require.NoError(t, err)
@@ -132,7 +141,10 @@ func TestGetAppsReadyToUnstake(t *testing.T) {
 }
 
 func TestGetAppStatus(t *testing.T) {
-	db := NewTestPostgresContext(t, 1)
+	testPersistenceMod, teardownSuite := setupSuite(withGenesis)
+	defer teardownSuite()
+
+	db := NewTestPostgresContext(t, testPersistenceMod, 1)
 
 	app, err := createAndInsertDefaultTestApp(db)
 	require.NoError(t, err)
@@ -151,7 +163,10 @@ func TestGetAppStatus(t *testing.T) {
 }
 
 func TestGetAppPauseHeightIfExists(t *testing.T) {
-	db := NewTestPostgresContext(t, 1)
+	testPersistenceMod, teardownSuite := setupSuite(withGenesis)
+	defer teardownSuite()
+
+	db := NewTestPostgresContext(t, testPersistenceMod, 1)
 
 	app, err := createAndInsertDefaultTestApp(db)
 	require.NoError(t, err)
@@ -170,7 +185,10 @@ func TestGetAppPauseHeightIfExists(t *testing.T) {
 }
 
 func TestSetAppPauseHeightAndUnstakeLater(t *testing.T) {
-	db := NewTestPostgresContext(t, 0)
+	testPersistenceMod, teardownSuite := setupSuite(withGenesis)
+	defer teardownSuite()
+
+	db := NewTestPostgresContext(t, testPersistenceMod, 0)
 
 	app, err := createAndInsertDefaultTestApp(db)
 	require.NoError(t, err)
@@ -196,7 +214,10 @@ func TestSetAppPauseHeightAndUnstakeLater(t *testing.T) {
 }
 
 func TestGetAppOutputAddress(t *testing.T) {
-	db := NewTestPostgresContext(t, 0)
+	testPersistenceMod, teardownSuite := setupSuite(withGenesis)
+	defer teardownSuite()
+
+	db := NewTestPostgresContext(t, testPersistenceMod, 0)
 
 	app, err := createAndInsertDefaultTestApp(db)
 	require.NoError(t, err)
@@ -231,8 +252,11 @@ func newTestApp() (*coreTypes.Actor, error) {
 }
 
 func TestGetSetStakeAmount(t *testing.T) {
+	testPersistenceMod, teardownSuite := setupSuite(withGenesis)
+	defer teardownSuite()
+
 	var newStakeAmount = "new_stake_amount"
-	db := NewTestPostgresContext(t, 1)
+	db := NewTestPostgresContext(t, testPersistenceMod, 1)
 
 	app, err := createAndInsertDefaultTestApp(db)
 	require.NoError(t, err)

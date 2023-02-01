@@ -7,7 +7,8 @@ import (
 )
 
 func TestPersistenceContextParallelReadWrite(t *testing.T) {
-	prepareAndCleanContext(t)
+	testPersistenceMod, teardownSuite := setupSuite(cleanSlate)
+	defer teardownSuite()
 
 	// variables for testing
 	poolName := "fake"
@@ -49,7 +50,8 @@ func TestPersistenceContextParallelReadWrite(t *testing.T) {
 }
 
 func TestPersistenceContextTwoWritesErrors(t *testing.T) {
-	prepareAndCleanContext(t)
+	testPersistenceMod, teardownSuite := setupSuite(withGenesis)
+	defer teardownSuite()
 
 	// Opening up first write context succeeds
 	_, err := testPersistenceMod.NewRWContext(0)
@@ -65,7 +67,8 @@ func TestPersistenceContextTwoWritesErrors(t *testing.T) {
 }
 
 func TestPersistenceContextSequentialWrites(t *testing.T) {
-	prepareAndCleanContext(t)
+	testPersistenceMod, teardownSuite := setupSuite(withGenesis)
+	defer teardownSuite()
 
 	// Opening up first write context succeeds
 	writeContext1, err := testPersistenceMod.NewRWContext(0)
@@ -90,7 +93,8 @@ func TestPersistenceContextSequentialWrites(t *testing.T) {
 }
 
 func TestPersistenceContextMultipleParallelReads(t *testing.T) {
-	prepareAndCleanContext(t)
+	testPersistenceMod, teardownSuite := setupSuite(withGenesis)
+	defer teardownSuite()
 
 	// Opening up first read context succeeds
 	readContext1, err := testPersistenceMod.NewReadContext(0)
@@ -107,11 +111,4 @@ func TestPersistenceContextMultipleParallelReads(t *testing.T) {
 	require.NoError(t, readContext1.Close())
 	require.NoError(t, readContext2.Close())
 	require.NoError(t, readContext3.Close())
-}
-
-func prepareAndCleanContext(t *testing.T) {
-	// Cleanup context after the test
-	t.Cleanup(clearAllState)
-
-	clearAllState()
 }
