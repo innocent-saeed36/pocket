@@ -87,7 +87,7 @@ func connectToDatabase(cfg *configs.PersistenceConfig) (*pgx.Conn, error) {
 	} else {
 		return nil, fmt.Errorf("unable to set max connection idle time : %v", err)
 	}
-	config.MaxConns = cfg.GetMaxConnsCount() + 100
+	config.MaxConns = cfg.GetMaxConnsCount()
 	config.MinConns = cfg.GetMinConnsCount()
 	healthCheckPeriod, err := time.ParseDuration(cfg.GetHealthCheckPeriod())
 	if err == nil {
