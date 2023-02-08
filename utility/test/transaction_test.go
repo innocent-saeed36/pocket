@@ -69,7 +69,7 @@ func TestUtilityContext_CheckTransaction(t *testing.T) {
 
 	hash, err := tx.Hash()
 	require.NoError(t, err)
-	require.True(t, ctx.Mempool.Contains(hash)) // IMPROVE: Access the mempool from the `testUtilityMod` directly
+	require.True(t, testUtilityMod.GetMempool().Contains(hash))
 	require.Equal(t, testUtilityMod.CheckTransaction(txBz).Error(), typesUtil.ErrDuplicateTransaction().Error())
 
 	test_artifacts.CleanupTest(ctx)
@@ -145,7 +145,7 @@ func TestUtilityContext_HandleMessage(t *testing.T) {
 	test_artifacts.CleanupTest(ctx)
 }
 
-func newTestingTransaction(t *testing.T, ctx utility.UtilityContext) (transaction *typesUtil.Transaction, startingBalance, amountSent *big.Int, signer crypto.PrivateKey) {
+func newTestingTransaction(t *testing.T, ctx *utility.UtilityContext) (transaction *typesUtil.Transaction, startingBalance, amountSent *big.Int, signer crypto.PrivateKey) {
 	amountSent = new(big.Int).Set(defaultSendAmount)
 	startingBalance = new(big.Int).Set(test_artifacts.DefaultAccountAmount)
 

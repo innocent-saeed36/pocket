@@ -159,7 +159,7 @@ func TestHotstuff4Nodes1BlockHappyPath(t *testing.T) {
 					Round:  0,
 				},
 				nodeState)
-			require.Equal(t, nodeState.LeaderId, typesCons.NodeId(0), "Leader should be empty")
+			require.Equal(t, typesCons.NodeId(0), nodeState.LeaderId, "Leader should be empty")
 			continue
 		}
 		assertNodeConsensusView(t, pocketId,
@@ -189,7 +189,7 @@ func TestHotstuff4Nodes1BlockHappyPath(t *testing.T) {
 				Round:  0,
 			},
 			nodeState)
-		require.Equal(t, nodeState.LeaderId, typesCons.NodeId(0), "Leader should be empty")
+		require.Equal(t, typesCons.NodeId(0), nodeState.LeaderId, "Leader should be empty")
 	}
 }
 
