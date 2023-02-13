@@ -1,7 +1,6 @@
 package cli
 
 import (
-	"context"
 	"os"
 
 	"github.com/manifoldco/promptui"
@@ -50,13 +49,6 @@ var (
 	genesisPath string = getEnv("GENESIS_PATH", "build/config/genesis.json")
 )
 
-type ctxKey int
-
-const (
-	addrBookProviderCtxKey ctxKey = iota
-	currentHeightProviderCtxKey
-)
-
 func getEnv(key, defaultValue string) string {
 	if value, ok := os.LookupEnv(key); ok {
 		return value
@@ -88,11 +80,8 @@ func NewDebugCommand() *cobra.Command {
 				),
 			)
 			modulesRegistry.RegisterModule(addressBookProvider)
-			cmd.SetContext(context.WithValue(cmd.Context(), addrBookProviderCtxKey, addressBookProvider))
-
 			currentHeightProvider := rpcCHP.NewRPCCurrentHeightProvider()
 			modulesRegistry.RegisterModule(currentHeightProvider)
-			cmd.SetContext(context.WithValue(cmd.Context(), currentHeightProviderCtxKey, currentHeightProvider))
 
 			p2pM, err := p2p.Create(runtimeMgr.GetBus())
 			if err != nil {
@@ -104,14 +93,20 @@ func NewDebugCommand() *cobra.Command {
 				logger.Global.Fatal().Err(err).Msg("Failed to start p2p module")
 			}
 		},
-		RunE: runDebug,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			// if we don't inject the bus into the command context, now here we'd have to do hacky things like:
+			// - initializing everything every time a command is ran (not ideal, but it would work I suppose)
+			// - having a global reference to the bus that we would pass here or... reference globally directly
+			// - any other ideas?
+			return runDebug(cmd, modules.Bus(nil), args)
+		},
 	}
 }
 
-func runDebug(cmd *cobra.Command, args []string) (err error) {
+func runDebug(cmd *cobra.Command, bus modules.Bus, args []string) (err error) {
 	for {
 		if selection, err := promptGetInput(); err == nil {
-			handleSelect(cmd, selection)
+			handleSelect(cmd, bus, selection)
 		} else {
 			return err
 		}
@@ -139,57 +134,57 @@ func promptGetInput() (string, error) {
 	return result, nil
 }
 
-func handleSelect(cmd *cobra.Command, selection string) {
+func handleSelect(cmd *cobra.Command, bus modules.Bus, selection string) {
 	switch selection {
 	case PromptResetToGenesis:
 		m := &messaging.DebugMessage{
 			Action:  messaging.DebugMessageAction_DEBUG_CONSENSUS_RESET_TO_GENESIS,
 			Message: nil,
 		}
-		broadcastDebugMessage(cmd, m)
+		broadcastDebugMessage(cmd, bus, m)
 	case PromptPrintNodeState:
 		m := &messaging.DebugMessage{
 			Action:  messaging.DebugMessageAction_DEBUG_CONSENSUS_PRINT_NODE_STATE,
 			Message: nil,
 		}
-		broadcastDebugMessage(cmd, m)
+		broadcastDebugMessage(cmd, bus, m)
 	case PromptTriggerNextView:
 		m := &messaging.DebugMessage{
 			Action:  messaging.DebugMessageAction_DEBUG_CONSENSUS_TRIGGER_NEXT_VIEW,
 			Message: nil,
 		}
-		broadcastDebugMessage(cmd, m)
+		broadcastDebugMessage(cmd, bus, m)
 	case PromptTogglePacemakerMode:
 		m := &messaging.DebugMessage{
 			Action:  messaging.DebugMessageAction_DEBUG_CONSENSUS_TOGGLE_PACE_MAKER_MODE,
 			Message: nil,
 		}
-		broadcastDebugMessage(cmd, m)
+		broadcastDebugMessage(cmd, bus, m)
 	case PromptShowLatestBlockInStore:
 		m := &messaging.DebugMessage{
 			Action:  messaging.DebugMessageAction_DEBUG_SHOW_LATEST_BLOCK_IN_STORE,
 			Message: nil,
 		}
-		sendDebugMessage(cmd, m)
+		sendDebugMessage(cmd, bus, m)
 	case PromptSendMetadataRequest:
 		m := &messaging.DebugMessage{
 			Action:  messaging.DebugMessageAction_DEBUG_CONSENSUS_SEND_METADATA_REQ,
 			Message: nil,
 		}
-		broadcastDebugMessage(cmd, m)
+		broadcastDebugMessage(cmd, bus, m)
 	case PromptSendBlockRequest:
 		m := &messaging.DebugMessage{
 			Action:  messaging.DebugMessageAction_DEBUG_CONSENSUS_SEND_BLOCK_REQ,
 			Message: nil,
 		}
-		broadcastDebugMessage(cmd, m)
+		broadcastDebugMessage(cmd, bus, m)
 	default:
 		logger.Global.Error().Msg("Selection not yet implemented...")
 	}
 }
 
 // Broadcast to the entire validator set
-func broadcastDebugMessage(cmd *cobra.Command, debugMsg *messaging.DebugMessage) {
+func broadcastDebugMessage(cmd *cobra.Command, bus modules.Bus, debugMsg *messaging.DebugMessage) {
 	anyProto, err := anypb.New(debugMsg)
 	if err != nil {
 		logger.Global.Fatal().Err(err).Msg("Failed to create Any proto")
@@ -200,7 +195,7 @@ func broadcastDebugMessage(cmd *cobra.Command, debugMsg *messaging.DebugMessage)
 	// address book of the actual validator nodes, so `node1.consensus` never receives the message.
 	// p2pMod.Broadcast(anyProto)
 
-	addrBook, err := fetchAddressBook(cmd)
+	addrBook, err := fetchAddressBook(cmd, bus)
 	for _, val := range addrBook {
 		addr := val.Address
 		if err != nil {
@@ -214,13 +209,13 @@ func broadcastDebugMessage(cmd *cobra.Command, debugMsg *messaging.DebugMessage)
 }
 
 // Send to just a single (i.e. first) validator in the set
-func sendDebugMessage(cmd *cobra.Command, debugMsg *messaging.DebugMessage) {
+func sendDebugMessage(cmd *cobra.Command, bus modules.Bus, debugMsg *messaging.DebugMessage) {
 	anyProto, err := anypb.New(debugMsg)
 	if err != nil {
 		logger.Global.Error().Err(err).Msg("Failed to create Any proto")
 	}
 
-	addrBook, err := fetchAddressBook(cmd)
+	addrBook, err := fetchAddressBook(cmd, bus)
 	if err != nil {
 		logger.Global.Fatal().Msg("Unable to retrieve the addrBook")
 	}
@@ -242,9 +237,16 @@ func sendDebugMessage(cmd *cobra.Command, debugMsg *messaging.DebugMessage) {
 }
 
 // fetchAddressBook retrieves the providers from the CLI context and uses them to retrieve the address book for the current height
-func fetchAddressBook(cmd *cobra.Command) (types.AddrBook, error) {
-	addrBookProvider := cmd.Context().Value(addrBookProviderCtxKey)
-	currentHeightProvider := cmd.Context().Value(currentHeightProviderCtxKey)
+func fetchAddressBook(cmd *cobra.Command, bus modules.Bus) (types.AddrBook, error) {
+	modulesRegistry := bus.GetModulesRegistry()
+	addrBookProvider, err := modulesRegistry.GetModule(addrbook_provider.ModuleName)
+	if err != nil {
+		logger.Global.Fatal().Msg("Unable to retrieve the addrBookProvider")
+	}
+	currentHeightProvider, err := modulesRegistry.GetModule(current_height_provider.ModuleName)
+	if err != nil {
+		logger.Global.Fatal().Msg("Unable to retrieve the currentHeightProvider")
+	}
 
 	height := currentHeightProvider.(current_height_provider.CurrentHeightProvider).CurrentHeight()
 	addrBook, err := addrBookProvider.(addrbook_provider.AddrBookProvider).GetStakedAddrBookAtHeight(height)
