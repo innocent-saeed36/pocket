@@ -17,6 +17,7 @@ func (m *consensusModule) handleHotstuffMessage(msg *typesCons.HotstuffMessage) 
 	step := msg.GetStep()
 
 	m.logger.Debug().Fields(map[string]any{
+		"nodeId": m.nodeId,
 		"step":   msg.GetStep(),
 		"height": msg.Height,
 		"round":  msg.Round,
@@ -28,6 +29,7 @@ func (m *consensusModule) handleHotstuffMessage(msg *typesCons.HotstuffMessage) 
 	}
 
 	m.logger.Debug().Fields(map[string]any{
+		"nodeId": m.nodeId,
 		"step":   msg.GetStep(),
 		"height": msg.Height,
 		"round":  msg.Round,
