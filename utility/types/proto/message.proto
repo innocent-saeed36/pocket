@@ -7,6 +7,8 @@ option go_package = "github.com/pokt-network/pocket/utility/types";
 import "google/protobuf/any.proto";
 import "core/types/proto/actor.proto";
 
+// CONSIDERATION: Move these into the shared library
+
 // Send funds from one address to another
 message MessageSend {
   bytes from_address = 1;

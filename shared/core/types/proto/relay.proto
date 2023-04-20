@@ -1,0 +1,56 @@
+syntax = "proto3";
+
+package core;
+
+option go_package = "github.com/pokt-network/pocket/shared/core/types";
+
+import "google/protobuf/any.proto";
+
+import ""
+
+
+
+// type Payload struct {
+// 	Data    string            `json:"data"`              // the actual data string for the external chain
+// 	Method  string            `json:"method"`            // the http CRUD method
+// 	Path    string            `json:"path"`              // the REST Path
+// 	Headers map[string]string `json:"headers,omitempty"` // http headers
+// }
+
+
+message JSONRPCRequest {
+    string jsonrpc = 1;
+    string method = 2;
+    string id = 3;
+    google.protobuf.Any params = 4;
+}
+
+message JSONRPCRequest {
+    string jsonrpc = 1;
+    string method = 2;
+    string id = 3;
+    google.protobuf.Any params = 4;
+}
+
+
+message RelayResponse {
+    bytes payload = 1; // the json-rpc payload to be relayed to the web3 chain
+    Signature signature = 2; // the application's signature and public key
+
+    // RelayMeta meta = 2; // metadata for the relay request
+    // RelayProof proof = 3; // the authentication scheme needed for work
+}
+
+message RelayRequest {
+    oneof payload {
+        JSONRPCRequest jsonrpc = 1;
+    }
+    bytes payload = 1; // the json-rpc payload to be relayed to the web3 chain
+    Signature signature = 2; // the application's signature and public key
+
+    // RelayMeta meta = 2; // metadata for the relay request
+    // RelayProof proof = 3; // the authentication scheme needed for work
+}
+
+message RelayResponse {
+}

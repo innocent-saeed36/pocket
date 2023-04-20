@@ -29,6 +29,8 @@ type UtilityModule interface {
 	// It is useful for handling messages from the utility module's of other nodes that do not directly affect the state.
 	// IMPROVE: Find opportunities to break this apart as the module matures.
 	HandleUtilityMessage(*anypb.Any) error
+
+	HandleRelayMessage(*anypb.Any) error
 }
 
 // TECHDEBT: Remove this interface from `shared/modules` and use the `Actor` protobuf type instead
