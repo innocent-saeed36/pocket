@@ -39,7 +39,18 @@ type baseUtilityUnitOfWork struct {
 	proposalProposerAddr []byte
 	proposalBlockTxs     [][]byte
 
+	proposedKeyValueStores map[string]LeafValue
+
 	stateHash string
+}
+
+type LeafValue struct {
+	TreeName  string
+	ValueNew  []byte
+	ValuePrev []byte
+	// isAdded
+	// isDeleted
+	// isModified
 }
 
 func (uow *baseUtilityUnitOfWork) SetProposalBlock(blockHash string, proposerAddr []byte, txs [][]byte) error {
@@ -78,6 +89,9 @@ func (uow *baseUtilityUnitOfWork) ApplyBlock() error {
 	}
 	// return the app hash (consensus module will get the validator set directly)
 	log.Debug().Msg("computing state hash")
+	// Key issue #2: Updating all the other key-value stores which are not reverted if:
+	// - State hash doesn't match
+	// - Consensus doesn't agreement
 	stateHash, err := uow.persistenceRWContext.ComputeStateHash()
 	if err != nil {
 		log.Fatal().Err(err).Bool("TODO", true).Msg("Updating the app hash failed. TODO: Look into roll-backing the entire commit...")
@@ -148,6 +162,10 @@ func (uow *baseUtilityUnitOfWork) processTransactionsFromProposalBlock(txMempool
 			return err
 		}
 
+		// hydrateTxResult
+		// - Transaction -> TxResult (soon to be IndexedTransaction)
+		// - Applying business logic (i.e. state transition) of message inside transaction to the postgres DB
+
 		txResult, err := uow.hydrateTxResult(tx, index)
 		if err != nil {
 			return err
@@ -158,6 +176,7 @@ func (uow *baseUtilityUnitOfWork) processTransactionsFromProposalBlock(txMempool
 			return err
 		}
 
+		// olshansky: add comment explaining why this is after tx validation
 		if txMempool.Contains(txHash) {
 			if err := txMempool.RemoveTx(txProtoBytes); err != nil {
 				return err
@@ -168,8 +187,12 @@ func (uow *baseUtilityUnitOfWork) processTransactionsFromProposalBlock(txMempool
 		}
 
 		// TODO(#564): make sure that indexing is reversible in case of a rollback
+		//
 		if err := uow.persistenceRWContext.IndexTransaction(txResult); err != nil {
 			uow.logger.Fatal().Err(err).Msg("TODO(#327): We can apply the transaction but not index it. Crash the process for now")
+			// Key problem number 1: We have a fatal error because we can't revert the indexed transaction
+			// What does indexTransaction do:
+			// Adds a key-value: txHash -> serialized(Transaction()) inside badgerDB
 		}
 	}
 	return nil

@@ -11,6 +11,9 @@ import (
 	typesUtil "github.com/pokt-network/pocket/utility/types"
 )
 
+// OLSHANSKY: MAKE IT CLEAR THAT THIS IS POSTGRES
+// OLSHANSKY: MAKE IT EASIER TO ADD NEW UTILITY MESSAGE
+
 func (u *baseUtilityUnitOfWork) handleMessage(msg typesUtil.Message) (err typesUtil.Error) {
 	switch x := msg.(type) {
 	case *typesUtil.MessageSend:

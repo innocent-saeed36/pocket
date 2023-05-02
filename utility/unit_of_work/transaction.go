@@ -15,6 +15,8 @@ import (
 //
 // IMPROVE: hydration should accept and return the same type (i.e. TxResult) so there may be opportunity
 // to refactor this in the future.
+// OLSHANSKY: RENAME THIS FUCKING THING
+//             - Decouple message handlying from tx result hydration
 func (u *baseUtilityUnitOfWork) hydrateTxResult(tx *coreTypes.Transaction, index int) (*coreTypes.TxResult, typesUtil.Error) {
 	msg, err := u.anteHandleMessage(tx)
 	if err != nil {

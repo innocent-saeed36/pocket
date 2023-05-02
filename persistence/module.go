@@ -263,3 +263,47 @@ func (m *persistenceModule) shouldHydrateGenesisDb() (bool, error) {
 
 	return true, nil
 }
+
+
+// Merkle Trees
+// - Paths to leaf: addresses
+// - Values of leafs: serialized(protobuf)
+// Root = integrity = consistency
+
+// Apply Block
+// ----------
+// for tx in txs:
+//  1. Retrieve data from state
+//  2. Apply tx to state
+//  3. Validate if state transition is valid
+//  	- index tx if valid
+//      - throw away tx if invalid
+
+// Two approaches to Block Validation
+// ----------------------------------
+
+// Approach 1:
+// - Identify all leafs needed to apply tx
+// - Retrieve all leafs needed to apply tx
+// - Deserialize all protos
+// - Bunch of business logic to valid state transition
+// - Step 3: validate if state if valid -> index tx or not
+
+// Approach 2:
+// - Maintain tables which are a view of all the trees
+// - Avoid key-value retrieval + deserialization every time
+// - Business logic of validation split across code + postgres constraints
+// - Step 3: validate if state if valid -> index tx or not
+
+// Approach 2 in code:
+// func (uow *baseUtilityUnitOfWork) processTransactionsFromProposalBlock(txMempool mempool.TXMempool) (err error) {
+// for tx in txs:
+// 1. Basic tx validation (nothing special); no badger and no postgres
+// 2. hydrateTxResult
+//    - handleMessage
+//    	- retrieve business logic from inside the message (which is inside the transaction)
+//      - Example: send
+//         - GetAccountAmount from sender from postgresDB
+//		   - Substract value retrieved form postgres
+//         - Add account amount to receiver in postgres
+//         - Update the sender's amount in postgres
