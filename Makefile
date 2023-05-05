@@ -121,6 +121,7 @@ install_cli_deps: ## Installs `protoc-gen-go`, `mockgen`, 'protoc-go-inject-tag'
 	go install "github.com/golang/mock/mockgen@v1.6.0" && mockgen --version
 	go install "github.com/favadi/protoc-go-inject-tag@latest"
 	go install "github.com/deepmap/oapi-codegen/cmd/oapi-codegen@v1.11.0"
+	go install github.com/cucumber/godog/cmd/godog@latest
 	curl -fsSL https://raw.githubusercontent.com/tilt-dev/tilt/master/scripts/install.sh | bash
 	curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
 
