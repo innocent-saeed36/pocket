@@ -49,7 +49,6 @@ var (
 	DefaultPersistencePostgresURL    = "postgres://postgres:postgres@pocket-db:5432/postgres"
 	DefaultPersistenceBlockStorePath = "/var/blockstore"
 	// p2p
-	DefaultUseLibp2p          = false
 	DefaultP2PPort            = uint32(42069)
 	DefaultP2PUseRainTree     = true
 	DefaultP2PConnectionType  = types.ConnectionType_TCPConnection
