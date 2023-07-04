@@ -27,7 +27,11 @@ type bus struct {
 }
 
 func CreateBus(runtimeMgr modules.RuntimeMgr) (modules.Bus, error) {
-	return new(bus).Create(runtimeMgr)
+	b, err := new(bus).Create(runtimeMgr)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create a new bus: %w", err)
+	}
+	return b, nil
 }
 
 func (b *bus) Create(runtimeMgr modules.RuntimeMgr) (modules.Bus, error) {
@@ -36,6 +40,12 @@ func (b *bus) Create(runtimeMgr modules.RuntimeMgr) (modules.Bus, error) {
 
 		runtimeMgr:      runtimeMgr,
 		modulesRegistry: NewModulesRegistry(),
+	}
+
+	// Assume an error can occur during initialization
+	err := mockInitializationError() // Replace this with actual error check
+	if err != nil {
+		return nil, err
 	}
 
 	return bus, nil
@@ -51,6 +61,12 @@ func (m *bus) RegisterModule(module modules.Module) {
 }
 
 func (m *bus) PublishEventToBus(e *messaging.PocketEnvelope) {
+	// Check if channel is at capacity
+	if len(m.channel) == cap(m.channel) {
+		logger.Global.Logger.Warn().
+			Msg("event channel at capacity, dropping event")
+		return
+	}
 	m.channel <- e
 }
 
